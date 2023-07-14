@@ -1,0 +1,66 @@
+.search-history {
+  display: flex;
+  flex-direction: column;
+}
+
+/* current day card */
+.top {
+  flex-direction: row;
+  display: none;
+  margin-left: 35%;
+  margin-right: 2%;
+}
+
+.weather {
+  padding: 15px;
+}
+
+/* fiveday forecast cards*/
+
+#fiveForecast {
+  display: flex;
+  margin-right: 5%;
+  margin-left: 25%;
+  justify-content: end;
+  padding: 5%;
+}
+
+#fiver {
+  display: flex;
+  margin-right: 5%;
+  justify-content: end;
+}
+
+/*  */
+
+.day {
+  background: #1a2846;
+  color: white;
+  list-style: none;
+  padding: 10px 20px;
+}
+
+.five-day-forecast {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.five-day-forecast-header {
+  padding: 20px 10px;
+  font-size: 2em;
+}
+
+.present-day-weather ul {
+  list-style: none;
+  border: 1px solid;
+  padding: 10px;
+  margin: 10px;
+}
+
+header {
+  background: #1a2846;
+  color: white;
+  padding: 10px;
+  margin-bottom: 10px;
+}
