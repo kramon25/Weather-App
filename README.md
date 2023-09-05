@@ -1,3 +1,5 @@
+Github repo: https://github.com/kramon25/Weather-App
+
 https://kramon25.github.io/Weather-App/
 
 ![updatedweather](https://github.com/kramon25/Weather-App/assets/133789904/738a2f53-e20c-4ebf-b01d-8dc55262eec8)
