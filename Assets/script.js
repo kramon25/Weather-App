@@ -1,530 +1,229 @@
-// worked with Keller Vicino
+var cityInputEl = document.getElementById("city-input");
+var cityFormEl = document.getElementById("city-form");
+var searchEl = document.getElementById("search-button");
+var searchHistoryEl = document.getElementById("search-history");
+var currentContainerEl = document.getElementById("current-container");
+var forecastContainerEl = document.getElementById("forecast-container");
 
-$(function date() {
-  $(document).ready(function () {
-    const saveButton = document.querySelector(".saveBtn");
+var APIkey = "1f40db029d8aa5986ddf3ab9927c8d74";
+var cities = [];
 
-    $(function () {
-      $(document).ready(function () {
-        var date = dayjs().format("dddd, MMM DD YYYY h:mma");
-        $("#date").html(date);
+var loadCities = function () {
+  var citiesLoaded = localStorage.getItem("cities");
+  if (!citiesLoaded) {
+    return false;
+  }
+
+  citiesLoaded = JSON.parse(citiesLoaded);
+
+  for (var i = 0; i < citiesLoaded.length; i++) {
+    displaySearchedCities(citiesLoaded[i]);
+    cities.push(citiesLoaded[i]);
+  }
+};
+
+var saveCities = function () {
+  localStorage.setItem("cities", JSON.stringify(cities));
+};
+
+var displaySearchedCities = function (city) {
+  var cityCardEl = document.createElement("div");
+  cityCardEl.setAttribute("class", "card");
+  var cityCardNameEl = document.createElement("div");
+  cityCardNameEl.setAttribute("class", "card-body searched-city");
+  cityCardNameEl.textContent = city;
+
+  cityCardEl.appendChild(cityCardNameEl);
+
+  cityCardEl.addEventListener("click", function () {
+    getCityData(city);
+  });
+
+  searchHistoryEl.appendChild(cityCardEl);
+};
+
+var displayCurrentData = function (city, data) {
+  //Endpoints to dislay current data
+  var tempCurrent = Math.round(data.current.temp);
+  var humidity = Math.round(data.current.humidity);
+  var windSpeed = data.current.wind_speed;
+  var uvIndex = data.current.uvi;
+  var iconCurrent = data.current.weather[0].icon;
+
+  //create HTML for city/date/icon
+  currentContainerEl.textContent = "";
+  currentContainerEl.setAttribute("class", "m-3 border col-10 text-center");
+  var divCityHeader = document.createElement("div");
+  var headerCityDate = document.createElement("h2");
+  var currentdate = moment().format("L");
+  var imageIcon = document.createElement("img");
+  imageIcon.setAttribute("src", "");
+  imageIcon.setAttribute(
+    "src",
+    "https://openweathermap.org/img/wn/" + iconCurrent + "@2x.png"
+  );
+  headerCityDate.textContent = city + "   (" + currentdate + ")";
+
+  //Append to container for current data
+  divCityHeader.appendChild(headerCityDate);
+  divCityHeader.appendChild(imageIcon);
+  currentContainerEl.appendChild(divCityHeader);
+
+  //create element to display weather data
+  var divCurrent = document.createElement("div");
+  var tempEl = document.createElement("p");
+  var humidityEl = document.createElement("p");
+  var windSpeedEl = document.createElement("p");
+  var uvIndexEl = document.createElement("p");
+  var uvIndexColorEl = document.createElement("span");
+  uvIndexColorEl.textContent = uvIndex;
+  //color for background of UVindex depending on severity
+  if (uvIndex <= 4) {
+    uvIndexColorEl.setAttribute("class", "bg-success text-white p-2");
+  } else if (uvIndex <= 8) {
+    uvIndexColorEl.setAttribute("class", "bg-warning text-black p-2");
+  } else {
+    uvIndexColorEl.setAttribute("class", "bg-danger text-white p-2");
+  }
+
+  //add current weather data to page
+  tempEl.textContent = "Temperature: " + tempCurrent + "°F";
+  humidityEl.textContent = "Humidity: " + humidity + "%";
+  windSpeedEl.textContent = "Wind Speed: " + windSpeed + " MPH";
+  uvIndexEl.textContent = "UV Index: ";
+
+  uvIndexEl.appendChild(uvIndexColorEl);
+
+  //append elements to section
+  divCurrent.appendChild(tempEl);
+  divCurrent.appendChild(humidityEl);
+  divCurrent.appendChild(windSpeedEl);
+  divCurrent.appendChild(uvIndexEl);
+
+  currentContainerEl.appendChild(divCurrent);
+};
+
+var displayForecastData = function (data) {
+  console.log(data);
+  //input header and clear data - header is outside main forecast container
+  forecastContainerEl.textContent = "";
+  var forecastHeaderEl = document.getElementById("five-day");
+  forecastHeaderEl.textContent = "5-day Forecast:";
+
+  //for loop for five day forecast
+  for (var i = 1; i < 6; i++) {
+    var tempForecast = Math.round(data.daily[i].temp.day);
+    var humidityForecast = data.daily[i].humidity;
+    var iconForecast = data.daily[i].weather[0].icon;
+
+    //create card elements and data elements for weather data
+    var cardEl = document.createElement("div");
+    cardEl.setAttribute(
+      "class",
+      "card col-xl-2 col-md-5 col-sm-10 mx-3 my-2 bg-primary bg-gradient text-white text-center"
+    );
+
+    var cardBodyEl = document.createElement("div");
+    cardBodyEl.setAttribute("class", "card-body");
+
+    var cardDateEl = document.createElement("h6");
+    cardDateEl.textContent = moment().add(i, "days").format("L");
+
+    var cardIconEl = document.createElement("img");
+    cardIconEl.setAttribute(
+      "src",
+      "https://openweathermap.org/img/wn/" + iconForecast + "@2x.png"
+    );
+
+    var cardTempEl = document.createElement("p");
+    cardTempEl.setAttribute("class", "card-text");
+    cardTempEl.textContent = "Temperature:  " + tempForecast + "°F";
+
+    var cardHumidEl = document.createElement("p");
+    cardHumidEl.setAttribute("class", "card-text");
+    cardHumidEl.textContent = "Humidity:  " + humidityForecast + "%";
+
+    //append children to card body
+    cardBodyEl.appendChild(cardDateEl);
+    cardBodyEl.appendChild(cardIconEl);
+    cardBodyEl.appendChild(cardTempEl);
+    cardBodyEl.appendChild(cardHumidEl);
+
+    //append body to card and then container element
+    cardEl.appendChild(cardBodyEl);
+    forecastContainerEl.appendChild(cardEl);
+
+    //reset form after data displays
+    cityFormEl.reset();
+  }
+};
+
+var getCityData = function (city) {
+  event.preventDefault();
+
+  //current conditions in user-entered city//using it to get long and latitude for One call weather API url
+  var cityInfoUrl =
+    "https://api.openweathermap.org/data/2.5/weather?q=" +
+    city +
+    "&units=imperial&appid=" +
+    APIkey;
+
+  //make a request to the url
+  fetch(cityInfoUrl).then(function (response) {
+    //if response is okay, no errors found
+    if (response.ok) {
+      response.json().then(function (data) {
+        console.log(data);
+
+        //variables set for data needed from this pull
+        var cityName = data.name;
+        var latitude = data.coord.lat;
+        var longitude = data.coord.lon;
+
+        //check if city exists in storage/array -- update it if not
+        var prevSearch = cities.includes(cityName);
+        if (!prevSearch) {
+          cities.push(cityName);
+          saveCities();
+          displaySearchedCities(cityName);
+        }
+
+        getWeatherData(cityName, latitude, longitude);
       });
+
+      //if city name is invalid return error message
+    } else {
+      alert("Ruh Roh! That city wasn't found!");
+      cityFormEl.reset();
+    }
+  });
+};
+
+var getWeatherData = function (city, latitude, longitude) {
+  ///5-day forecast API
+  var forecastUrl =
+    "https://api.openweathermap.org/data/2.5/onecall?lat=" +
+    latitude +
+    "&lon=" +
+    longitude +
+    "&units=imperial&exclude=minutely,hourly&appid=" +
+    APIkey;
+
+  fetch(forecastUrl).then(function (response) {
+    response.json().then(function (data) {
+      console.log(data);
+
+      displayCurrentData(city, data);
+      displayForecastData(data);
     });
   });
+};
+
+//load previously searched cities on page load
+loadCities();
+
+//form submit listener when user enters city
+cityFormEl.addEventListener("submit", function () {
+  cityInput = cityInputEl.value.trim();
+  getCityData(cityInput);
 });
-
-var searchBtn = document.querySelector("#searchBtn");
-var city = document.querySelector("#city");
-var searchHistory = "";
-var apiUrl =
-  "https://api.openweathermap.org/data/2.5/weather?q=London,uk&appid=01bd317b12076556f9ab659e74f0e375&units=metric";
-
-// // Forloop for persisting the data onto HMTL page
-// for (var i = 0; i < localStorage.length; i++) {
-//   var location = localStorage.getItem(i);
-//   // console.log(localStorage.getItem("City"));
-//   var cityName = $(".list-group").addClass(".list-group-item");
-
-//   cityName.append("<li>" + city + "</li>");
-// }
-
-// CURRENT DAY CONST
-const card = document.querySelector(".top");
-const con = document.querySelector("condition");
-const api = "01bd317b12076556f9ab659e74f0e375";
-const loc = document.querySelector("#location");
-const tempC = document.querySelector(".c");
-const fast = document.querySelector(".speed");
-const hum = document.querySelector(".hum");
-
-searchBtn.addEventListener("click", () => {
-  card.setAttribute("style", "display: block !important;");
-
-  var searchInp = $(".form-control").val();
-  DayForecast();
-  twoDayForecast();
-  threeDayForecast();
-  fourDayForecast();
-  fiveDayForecast();
-  var base =
-    "https://api.openweathermap.org/data/2.5/weather?q=" +
-    searchInp +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base)
-    .then((response) => {
-      return response.json();
-    })
-    .then((data) => {
-      const place = data.name;
-      const temp = data.main.temp;
-      const fast = data.wind.speed;
-      const humidity = data.main.humidity;
-
-      loc.textContent = `${place}:`;
-      tempC.textContent = ` ${temp} °F`;
-      fast.textContent = `${fast} MPH`;
-      hum.textContent = `${humidity}% Humidity`;
-
-      localStorage.setItem("searchInput", searchInp);
-      var savedSearchBtn = document.createElement("button");
-      savedSearchBtn.textContent = searchInp;
-      savedSearchBtn.addEventListener("click", handleSavedSearch);
-      var savedSearchContainer = document.getElementById("saved-searches");
-      savedSearchContainer.appendChild(savedSearchBtn);
-    });
-
-  // FIVE DAY FORECAST
-});
-// [0] DAY FORECAST CONST
-const conT = document.querySelector("conditionT");
-const tempT = document.querySelector(".ceL");
-const fastT = document.querySelector(".speedT");
-const humD = document.querySelector(".humD");
-const desC = document.querySelector(".description");
-const ico = document.querySelector("#icon");
-const cast = document.querySelector("#fiveForecast");
-
-function DayForecast(e) {
-  var fiveDaySearch = $(".form-control").val();
-  var base =
-    // "https://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=01bd317b12076556f9ab659e74f0e375";
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    fiveDaySearch +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[0];
-      const des = dataList.weather[0].description;
-      const temper = dataList.main.temp;
-      const faster = dataList.wind.speed;
-      const humiditier = dataList.main.humidity;
-
-      console.log(dataList, JSON.stringify(data));
-
-      // ico.textContent = `${iconC}`;
-      desC.textContent = `${des}`;
-      tempT.textContent = ` ${temper}°F`;
-      fastT.textContent = `${faster} mph`;
-      humD.textContent = `${humiditier}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-}
-// [2] DAY FORECAST CONST
-const conTwo = document.querySelector("conditiontwo");
-const tempTwo = document.querySelector(".cardtwo");
-const fastTwo = document.querySelector(".speedtwo");
-const humTwo = document.querySelector(".humtwo");
-const desTwo = document.querySelector(".descriptiontwo");
-// const ico = document.querySelector("#icon");
-// const cast = document.querySelector("#fiveForecast");
-
-function twoDayForecast(e) {
-  var fiveDaySearch = $(".form-control").val();
-  var base =
-    // "https://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=01bd317b12076556f9ab659e74f0e375";
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    fiveDaySearch +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[1];
-      const desT = dataList.weather[0].description;
-      const temptwo = dataList.main.temp;
-      const fastertwo = dataList.wind.speed;
-      const humiditytwo = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desTwo.textContent = `${desT}`;
-      tempTwo.textContent = ` ${temptwo}°F`;
-      fastTwo.textContent = `${fastertwo} mph`;
-      humTwo.textContent = `${humiditytwo}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-}
-// [3] DAY FORECAST CONST
-const conThree = document.querySelector("conditionthree");
-const tempThree = document.querySelector(".cardthree");
-const fastThree = document.querySelector(".speedthree");
-const humThree = document.querySelector(".humthree");
-const desThree = document.querySelector(".descriptionthree");
-// const ico = document.querySelector("#icon");
-// const cast = document.querySelector("#fiveForecast");
-
-function threeDayForecast(e) {
-  var fiveDaySearch = $(".form-control").val();
-  var base =
-    // "https://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=01bd317b12076556f9ab659e74f0e375";
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    fiveDaySearch +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[2];
-      const desTh = dataList.weather[0].description;
-      const tempthree = dataList.main.temp;
-      const fasterthree = dataList.wind.speed;
-      const humiditythree = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desThree.textContent = `${desTh}`;
-      tempThree.textContent = ` ${tempthree}°F`;
-      fastThree.textContent = `${fasterthree} mph`;
-      humThree.textContent = `${humiditythree}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-}
-// [4] DAY FORECAST CONST
-const conFour = document.querySelector("conditionfour");
-const tempFour = document.querySelector(".cardfour");
-const fastFour = document.querySelector(".speedfour");
-const humFour = document.querySelector(".humfour");
-const desFour = document.querySelector(".descriptionfour");
-// const ico = document.querySelector("#icon");
-// const cast = document.querySelector("#fiveForecast");
-
-function fourDayForecast(e) {
-  var fiveDaySearch = $(".form-control").val();
-  var base =
-    // "https://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=01bd317b12076556f9ab659e74f0e375";
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    fiveDaySearch +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[3];
-      const desF = dataList.weather[0].description;
-      const tempfour = dataList.main.temp;
-      const fasterfour = dataList.wind.speed;
-      const humidityfour = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desFour.textContent = `${desF}`;
-      tempFour.textContent = ` ${tempfour}°F`;
-      fastFour.textContent = `${fasterfour} mph`;
-      humFour.textContent = `${humidityfour}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-}
-// [5] DAY FORECAST CONST
-const conFive = document.querySelector("conditionfive");
-const tempFive = document.querySelector(".cardfive");
-const fastFive = document.querySelector(".speedfive");
-const humFive = document.querySelector(".humfive");
-const desFive = document.querySelector(".descriptionfive");
-// const ico = document.querySelector("#icon");
-// const cast = document.querySelector("#fiveForecast");
-
-function fiveDayForecast(e) {
-  var fiveDaySearch = $(".form-control").val();
-  var base =
-    // "https://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=01bd317b12076556f9ab659e74f0e375";
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    fiveDaySearch +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[4];
-      const desFi = dataList.weather[0].description;
-      const tempfive = dataList.main.temp;
-      const fasterfive = dataList.wind.speed;
-      const humidityfive = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desFive.textContent = `${desFi}`;
-      tempFive.textContent = ` ${tempfive}°F`;
-      fastFive.textContent = `${fasterfive} mph`;
-      humFive.textContent = `${humidityfive}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-}
-
-function handleSavedSearch(event) {
-  var savedSearchValue = event.target.textContent;
-
-  var base =
-    "https://api.openweathermap.org/data/2.5/weather?q=" +
-    savedSearchValue +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  var baseDay1 =
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    savedSearchValue +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  var baseDay2 =
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    savedSearchValue +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  var baseDay3 =
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    savedSearchValue +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  var baseDay4 =
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    savedSearchValue +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  var baseDay5 =
-    "https://api.openweathermap.org/data/2.5/forecast?q=" +
-    savedSearchValue +
-    "&Appid=01bd317b12076556f9ab659e74f0e375&units=imperial";
-
-  fetch(base)
-    .then((response) => {
-      return response.json();
-    })
-    .then((data) => {
-      const place = data.name;
-      const temp = data.main.temp;
-      const fast = data.wind.speed;
-      const humidity = data.main.humidity;
-
-      loc.textContent = `${place}:`;
-      tempC.textContent = ` ${temp} °F`;
-      fast.textContent = `${fast} mph`;
-      hum.textContent = `${humidity}% Humidity`;
-    });
-
-  fetch(baseDay1)
-    .then((response) => {
-      return response.json();
-    })
-    .then((data) => {
-      const dataList = data.list[0];
-      const des = dataList.weather[0].description;
-      const temper = dataList.main.temp;
-      const faster = dataList.wind.speed;
-      const humiditier = dataList.main.humidity;
-
-      console.log(dataList);
-
-      desC.textContent = `${des}`;
-      tempT.textContent = ` ${temper}°F`;
-      fastT.textContent = `${faster} mph`;
-      humD.textContent = `${humiditier}% Humidity`;
-    });
-
-  // -------------------------------------------------------------------------------
-
-  fetch(baseDay2, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[1];
-      const desT = dataList.weather[0].description;
-      const temptwo = dataList.main.temp;
-      const fastertwo = dataList.wind.speed;
-      const humiditytwo = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desTwo.textContent = `${desT}`;
-      tempTwo.textContent = ` ${temptwo}°F`;
-      fastTwo.textContent = `${fastertwo} mph`;
-      humTwo.textContent = `${humiditytwo}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-
-  // -------------------------------------------------------------------------------
-
-  fetch(baseDay3, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[2];
-      const desTh = dataList.weather[0].description;
-      const tempthree = dataList.main.temp;
-      const fasterthree = dataList.wind.speed;
-      const humiditythree = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desThree.textContent = `${desTh}`;
-      tempThree.textContent = ` ${tempthree}°F`;
-      fastThree.textContent = `${fasterthree} mph`;
-      humThree.textContent = `${humiditythree}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-
-  // -------------------------------------------------------------------------------
-
-  fetch(baseDay4, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[3];
-      const desF = dataList.weather[0].description;
-      const tempfour = dataList.main.temp;
-      const fasterfour = dataList.wind.speed;
-      const humidityfour = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desFour.textContent = `${desF}`;
-      tempFour.textContent = ` ${tempfour}°F`;
-      fastFour.textContent = `${fasterfour} mph`;
-      humFour.textContent = `${humidityfour}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-
-  // -------------------------------------------------------------------------------
-
-  fetch(baseDay5, {
-    method: "GET", //GET is the default.
-    credentials: "same-origin", // include, *same-origin, omit
-    redirect: "follow",
-  })
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      // const place = data.name;
-      const dataList = data.list[4];
-      const desFi = dataList.weather[0].description;
-      const tempfive = dataList.main.temp;
-      const fasterfive = dataList.wind.speed;
-      const humidityfive = dataList.main.humidity;
-
-      // ico.textContent = `${iconC}`;
-      desFive.textContent = `${desFi}`;
-      tempFive.textContent = ` ${tempfive}°F`;
-      fastFive.textContent = `${fasterfive} mph`;
-      humFive.textContent = `${humidityfive}% Humidity`;
-
-      localStorage.setItem("data", JSON.stringify(data));
-
-      // const iconT = document.createElement("img");
-      // iconT.src = "https://openwethermap.org/img/w/${data.weather[0].icon.png}";
-      // const iconC = dataList.weather[0].icon;
-      // ico.classList.add("weather-icon");
-      // ico.innerHTML = "";
-      // iconT.appendChild(ico);
-    });
-}
